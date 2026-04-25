@@ -13,7 +13,11 @@ SOURCES += \
         DirectorTecnico.cpp \
         EstadisticasJugador.cpp \
         EstadisticasJugadorPartido.cpp \
-        Jugador.cpp
+        Jugador.cpp \
+        EstadisticasEquipo.cpp \
+        Equipo.cpp \
+        Sede.cpp \
+        Arbitro.cpp
 
 HEADERS += \
         tipos.h \
@@ -23,7 +27,11 @@ HEADERS += \
         DirectorTecnico.h \
         EstadisticasJugador.h \
         EstadisticasJugadorPartido.h \
-        Jugador.h
+        Jugador.h \
+        EstadisticasEquipo.h \
+        Equipo.h \
+        Sede.h \
+        Arbitro.h
 
 # Para que Qt Creator encuentre el CSV sin cambiar de carpeta
 DEFINES += RUTA_CSV=\\\"../selecciones_clasificadas_mundial.csv\\\"

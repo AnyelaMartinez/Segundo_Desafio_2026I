@@ -8,6 +8,7 @@
 #include "tipos.h"
 #include "Lista.h"
 #include "Jugador.h"
+#include "Equipo.h"
 using namespace std;
 
 // Funcion que muestra el menu al usuario
@@ -22,11 +23,69 @@ void mostrarMenu() {
     cout << "4. Construir tablas y pasar a R16" << endl;
     cout << "5. Simular etapas eliminatorias" << endl;
     cout << "6. Mostrar estadisticas finales" << endl;
+    cout << "7. [PRUEBA] Probar clase Equipo" << endl;
     cout << "8. [PRUEBA] Probar clase Jugador" << endl;
     cout << "9. [PRUEBA] Probar plantilla Lista<T>" << endl;
     cout << "0. Salir" << endl;
     cout << "----------------------------------------" << endl;
     cout << "Opcion: ";
+}
+
+// Prueba rapida de la clase Equipo:
+// Crea un equipo, le pone confederacion, federacion, DT y unos jugadores,
+// le registra dos resultados y muestra la ficha completa.
+void probarEquipo() {
+    cout << "-- Prueba de clase Equipo --" << endl;
+
+    // Creamos el equipo
+    Equipo arg("Argentina", "ARG", 1);
+    arg.setPromedios(2.1, 0.9);
+    arg.setTitulosMundiales(3);
+
+    // Confederacion y federacion (las copia por valor)
+    ConfederacionContinental conmebol;
+    conmebol.nombre = "CONMEBOL";
+    conmebol.sigla = "CONMEBOL";
+    arg.setConfederacion(conmebol);
+
+    Federacion afa;
+    afa.nombre = "AFA";
+    arg.setFederacion(afa);
+
+    // DT en memoria dinamica (la clase Equipo se encarga de borrarlo despues)
+    DirectorTecnico* dt = new DirectorTecnico();
+    dt->nombre = "Lionel Scaloni";
+    dt->nacionalidad = "Argentina";
+    arg.setDirectorTecnico(dt);
+
+    // Tres jugadores en memoria dinamica
+    arg.agregarJugador(new Jugador(1, "Lionel", "Messi", 10));
+    arg.agregarJugador(new Jugador(2, "Julian", "Alvarez", 9));
+    arg.agregarJugador(new Jugador(3, "Emiliano", "Martinez", 23));
+
+    // Simulamos dos partidos
+    arg.registrarResultado(2, 1); // gana
+    arg.registrarResultado(0, 0); // empata
+
+    // Mostramos
+    cout << arg << endl;
+    arg.mostrarPlantilla();
+    cout << "Activos antes de roja: " << arg.contarJugadoresActivos() << endl;
+
+    // Le sacamos roja a Messi -> queda inactivo
+    arg.getJugador(0)->registrarTarjeta(true);
+    cout << "Activos tras roja a Messi: " << arg.contarJugadoresActivos() << endl;
+
+    // Antes del proximo partido reactivamos a todos
+    arg.reactivarJugadores();
+    cout << "Activos tras reactivar: " << arg.contarJugadoresActivos() << endl;
+
+    // Probamos copia profunda: si modifico la copia, el original NO cambia
+    Equipo copia = arg;
+    copia.registrarResultado(5, 0); // solo en la copia
+    cout << "Original: " << arg << endl;
+    cout << "Copia:    " << copia << endl;
+    // (al salir de la funcion se llaman los destructores y se libera todo)
 }
 
 // Prueba rapida de la clase Jugador:
@@ -104,6 +163,8 @@ int main() {
 
         if (opcion == 0) {
             cout << "Saliendo del sistema..." << endl;
+        } else if (opcion == 7) {
+            probarEquipo();
         } else if (opcion == 8) {
             probarJugador();
         } else if (opcion == 9) {
