@@ -1,6 +1,4 @@
 // tipos.h
-// Tipos base y constantes globales usadas en todo el proyecto UdeAWorldCup.
-// No contiene clases, solo un enum y algunos numeros fijos del mundial 2026.
 
 #ifndef TIPOS_H
 #define TIPOS_H
@@ -18,7 +16,6 @@ enum Etapa {
 };
 
 // Constantes del mundial 2026 (no cambian durante la ejecucion)
-// Las dejo aqui para no repetir numeros magicos en el codigo.
 const int TOTAL_EQUIPOS      = 48;
 const int TOTAL_GRUPOS       = 12;
 const int EQUIPOS_POR_GRUPO  = 4;
