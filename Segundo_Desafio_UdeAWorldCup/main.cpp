@@ -12,9 +12,28 @@
 #include "Partido.h"
 #include "Sede.h"
 #include "Arbitro.h"
+#include "GestorCSV.h"
+#include "MedidorRecursos.h"
+#include "Fixture.h"
 #include <cstdlib>   // srand, rand
 #include <ctime>     // time
 using namespace std;
+
+// Lista global de equipos del Mundial.
+// La declaramos aqui para que las distintas opciones del menu puedan compartirla.
+// Mas adelante esto vivira dentro de la clase Competicion.
+Lista<Equipo*> g_equipos;
+
+// Helper para borrar todo lo que tengamos cargado (evita fugas de memoria
+// si el usuario carga el CSV varias veces).
+void liberarEquiposGlobales() {
+    for (int i = 0; i < g_equipos.getTamano(); i++) {
+        if (g_equipos[i] != nullptr) {
+            delete g_equipos[i];
+        }
+    }
+    g_equipos.limpiar();
+}
 
 // Funcion que muestra el menu al usuario
 // Por ahora solo imprime las opciones, mas adelante iremos llamando a las funcionalidades.
@@ -32,9 +51,58 @@ void mostrarMenu() {
     cout << "11. [PRUEBA] Probar clase Partido (Poisson)" << endl;
     cout << "8. [PRUEBA] Probar clase Jugador" << endl;
     cout << "9. [PRUEBA] Probar plantilla Lista<T>" << endl;
+    cout << "12. [PRUEBA] Probar clase Fixture (calendario)" << endl;
     cout << "0. Salir" << endl;
     cout << "----------------------------------------" << endl;
     cout << "Opcion: ";
+}
+
+// Carga los 48 equipos desde el CSV usando GestorCSV.
+// Si ya habia equipos cargados, primero los libera para no duplicar memoria.
+void cargarDesdeCSV() {
+    liberarEquiposGlobales();
+
+    // RUTA_CSV viene del .pro (DEFINES += RUTA_CSV=...)
+    // Por defecto: "../selecciones_clasificadas_mundial.csv"
+    string ruta = RUTA_CSV;
+    cout << "Cargando equipos desde: " << ruta << endl;
+
+    // Medimos cuanto tarda la carga y cuanta RAM consume
+    MedidorRecursos medidor("Carga CSV");
+    medidor.iniciar();
+
+    GestorCSV gestor(ruta);
+    bool ok = gestor.cargarEquipos(g_equipos);
+
+    medidor.detener();
+
+    if (!ok) {
+        cout << "No se pudo abrir el archivo." << endl;
+        cout << "Tip: el .pro define RUTA_CSV=\"../selecciones_clasificadas_mundial.csv\"," << endl;
+        cout << "asi que el CSV debe estar en la carpeta padre del build." << endl;
+        return;
+    }
+
+    cout << "Equipos cargados: " << gestor.getCantidadCargada() << endl;
+    if (gestor.getLineasIgnoradas() > 0) {
+        cout << "Lineas ignoradas (mal formadas): " << gestor.getLineasIgnoradas() << endl;
+    }
+
+    // Mostramos los primeros 5 para verificar que se leyo bien
+    int aMostrar = (g_equipos.getTamano() < 5) ? g_equipos.getTamano() : 5;
+    cout << "Primeros " << aMostrar << " equipos:" << endl;
+    for (int i = 0; i < aMostrar; i++) {
+        Equipo* e = g_equipos[i];
+        if (e != nullptr) {
+            cout << "  " << *e
+                 << "  GFA=" << e->getPromedioGF()
+                 << "  GCB=" << e->getPromedioGC()
+                 << endl;
+        }
+    }
+
+    // Reporte de tiempo y RAM consumidos
+    medidor.mostrarReporte();
 }
 
 // Prueba rapida de la clase Partido:
@@ -179,6 +247,43 @@ void probarJugador() {
     cout << "Activo? " << (j1.estaActivo() ? "si" : "no") << endl;
 }
 
+// Prueba rapida de Fixture: arma 6 partidos entre 4 equipos y verifica
+// que se respeten las reglas (max 4 partidos/dia y 3 dias de descanso).
+void probarFixture() {
+    cout << "-- Prueba de clase Fixture --" << endl;
+
+    // 4 equipos de juguete
+    Equipo* a = new Equipo("Argentina", "ARG", 1);
+    Equipo* b = new Equipo("Brasil", "BRA", 2);
+    Equipo* c = new Equipo("Colombia", "COL", 3);
+    Equipo* d = new Equipo("Uruguay", "URU", 4);
+
+    // 6 partidos para que se vean varios dias
+    Partido* p1 = new Partido(1, FASE_GRUPOS, a, b);
+    Partido* p2 = new Partido(2, FASE_GRUPOS, c, d);
+    Partido* p3 = new Partido(3, FASE_GRUPOS, a, c);
+    Partido* p4 = new Partido(4, FASE_GRUPOS, b, d);
+    Partido* p5 = new Partido(5, FASE_GRUPOS, a, d);
+    Partido* p6 = new Partido(6, FASE_GRUPOS, b, c);
+
+    Fixture fix("Prueba grupo de 4");
+    fix.agendarPartido(p1);
+    fix.agendarPartido(p2);
+    fix.agendarPartido(p3);
+    fix.agendarPartido(p4);
+    fix.agendarPartido(p5);
+    fix.agendarPartido(p6);
+
+    fix.mostrarCalendario();
+
+    cout << "Ultimo dia ARG: " << fix.ultimoDiaDeEquipo(a) << endl;
+    cout << "Ultimo dia BRA: " << fix.ultimoDiaDeEquipo(b) << endl;
+
+    // Liberamos lo que creamos aca
+    delete p1; delete p2; delete p3; delete p4; delete p5; delete p6;
+    delete a; delete b; delete c; delete d;
+}
+
 // Prueba rapida de la plantilla Lista<T> con enteros.
 // Solo para verificar que agregar, operator[] y eliminar funcionan bien.
 void probarLista() {
@@ -227,6 +332,10 @@ int main() {
 
         if (opcion == 0) {
             cout << "Saliendo del sistema..." << endl;
+            // Liberamos la memoria de los equipos antes de cerrar
+            liberarEquiposGlobales();
+        } else if (opcion == 1) {
+            cargarDesdeCSV();
         } else if (opcion == 7) {
             probarEquipo();
         } else if (opcion == 11) {
@@ -235,6 +344,8 @@ int main() {
             probarJugador();
         } else if (opcion == 9) {
             probarLista();
+        } else if (opcion == 12) {
+            probarFixture();
         } else {
             // Por ahora solo avisamos que la opcion no esta implementada.
             cout << "[Opcion " << opcion << "] pendiente de implementar." << endl;

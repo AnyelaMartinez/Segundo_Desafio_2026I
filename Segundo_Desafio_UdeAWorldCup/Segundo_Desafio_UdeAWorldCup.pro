@@ -23,7 +23,10 @@ SOURCES += \
         Partido.cpp \
         PosicionGrupo.cpp \
         Bombo.cpp \
-        Grupo.cpp
+        Grupo.cpp \
+        GestorCSV.cpp \
+        MedidorRecursos.cpp \
+        Fixture.cpp
 
 HEADERS += \
         tipos.h \
@@ -43,7 +46,15 @@ HEADERS += \
         Partido.h \
         PosicionGrupo.h \
         Bombo.h \
-        Grupo.h
+        Grupo.h \
+        GestorCSV.h \
+        MedidorRecursos.h \
+        Fixture.h
+
+# En Windows necesitamos psapi para medir RAM (GetProcessMemoryInfo).
+# Si compilas en Linux/Mac esta linea no afecta porque MedidorRecursos
+# usa #ifdef _WIN32 y no llama a la API.
+win32: LIBS += -lpsapi
 
 # Para que Qt Creator encuentre el CSV sin cambiar de carpeta
 DEFINES += RUTA_CSV=\\\"../selecciones_clasificadas_mundial.csv\\\"
