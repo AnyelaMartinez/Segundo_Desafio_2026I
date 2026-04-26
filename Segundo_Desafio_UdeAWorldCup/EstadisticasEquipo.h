@@ -36,6 +36,7 @@ public:
 
     EstadisticasEquipo();
     EstadisticasEquipo(const EstadisticasEquipo& otro);
+    EstadisticasEquipo& operator=(const EstadisticasEquipo& otro);
 
     // Registra el resultado de un partido. golesProp = goles que metio
     // este equipo, golesRiv = goles que le metieron.

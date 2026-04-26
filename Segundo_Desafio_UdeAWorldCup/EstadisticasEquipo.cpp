@@ -29,6 +29,25 @@ EstadisticasEquipo::EstadisticasEquipo(const EstadisticasEquipo& otro) {
     faltas            = otro.faltas;
 }
 
+// Operador = explicito.
+// El compilador genera uno por defecto, pero como ya definimos el constructor
+// copia, marca el operator= por defecto como "deprecated" (regla de los 5).
+// Por eso lo escribimos a mano con la misma logica.
+EstadisticasEquipo& EstadisticasEquipo::operator=(const EstadisticasEquipo& otro) {
+    if (this == &otro) return *this;   // proteccion contra a = a
+    partidosJugados   = otro.partidosJugados;
+    partidosGanados   = otro.partidosGanados;
+    partidosEmpatados = otro.partidosEmpatados;
+    partidosPerdidos  = otro.partidosPerdidos;
+    golesFavor        = otro.golesFavor;
+    golesContra       = otro.golesContra;
+    puntos            = otro.puntos;
+    tarjetasAmarillas = otro.tarjetasAmarillas;
+    tarjetasRojas     = otro.tarjetasRojas;
+    faltas            = otro.faltas;
+    return *this;
+}
+
 // Logica de un partido:
 //  - PJ siempre sube en 1
 //  - sumamos goles a favor / en contra

@@ -82,6 +82,17 @@ public:
         return datos[indice];
     }
 
+    // Version CONST de obtener: cuando la lista es const (por ejemplo
+    // dentro de un metodo const o de un constructor copia que recibe
+    // 'const Lista&'), C++ elige esta version.
+    const T& obtener(int indice) const {
+        if (indice < 0 || indice >= tamano) {
+            cout << "Advertencia: indice " << indice << " fuera de rango." << endl;
+            return datos[0];
+        }
+        return datos[indice];
+    }
+
     // Elimina el elemento en la posicion indicada, corriendo los siguientes.
     void eliminar(int indice) {
         if (indice < 0 || indice >= tamano) return;
@@ -108,6 +119,11 @@ public:
 
     // Sobrecarga del operador []: permite usar lista[i] como si fuera un arreglo.
     T& operator[](int i) {
+        return obtener(i);
+    }
+
+    // Version CONST del operador []: para usar lista[i] desde contextos const.
+    const T& operator[](int i) const {
         return obtener(i);
     }
 

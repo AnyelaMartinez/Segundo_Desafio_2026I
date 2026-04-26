@@ -9,6 +9,11 @@
 #include "Lista.h"
 #include "Jugador.h"
 #include "Equipo.h"
+#include "Partido.h"
+#include "Sede.h"
+#include "Arbitro.h"
+#include <cstdlib>   // srand, rand
+#include <ctime>     // time
 using namespace std;
 
 // Funcion que muestra el menu al usuario
@@ -24,11 +29,66 @@ void mostrarMenu() {
     cout << "5. Simular etapas eliminatorias" << endl;
     cout << "6. Mostrar estadisticas finales" << endl;
     cout << "7. [PRUEBA] Probar clase Equipo" << endl;
+    cout << "11. [PRUEBA] Probar clase Partido (Poisson)" << endl;
     cout << "8. [PRUEBA] Probar clase Jugador" << endl;
     cout << "9. [PRUEBA] Probar plantilla Lista<T>" << endl;
     cout << "0. Salir" << endl;
     cout << "----------------------------------------" << endl;
     cout << "Opcion: ";
+}
+
+// Prueba rapida de la clase Partido:
+// Crea 2 equipos con sus 11 jugadores y simula un partido eliminatoria
+// para que se vea la formula de Poisson + posible prorroga + penales.
+void probarPartido() {
+    cout << "-- Prueba de clase Partido --" << endl;
+
+    // Equipo local
+    Equipo* arg = new Equipo("Argentina", "ARG", 1);
+    arg->setPromedios(2.1, 0.9);
+    for (int i = 1; i <= JUGADORES_CONVOCADOS; i++) {
+        arg->agregarJugador(new Jugador(i, "JugARG", "Apellido", i));
+    }
+
+    // Equipo visitante
+    Equipo* fra = new Equipo("Francia", "FRA", 2);
+    fra->setPromedios(1.9, 1.0);
+    for (int i = 1; i <= JUGADORES_CONVOCADOS; i++) {
+        fra->agregarJugador(new Jugador(i + 100, "JugFRA", "Apellido", i));
+    }
+
+    // Sede y arbitro (memoria local del programa, los pasamos por puntero)
+    Sede sede("Estadio Azteca", "Mexico DF", "Mexico", 87000);
+    Arbitro arbi("Wilton Sampaio", "Brasil");
+
+    // Creamos el partido (ELIMINATORIA: si empata, prorroga + penales)
+    Partido p(1, R16, arg, fra);
+    p.setSede(&sede);
+    p.setArbitro(&arbi);
+    p.setDia(1);
+
+    cout << "Antes de simular:" << endl;
+    cout << "  " << p << endl;
+
+    p.simular();
+
+    cout << "Despues de simular:" << endl;
+    cout << "  " << p << endl;
+    cout << "  Sede: " << sede << endl;
+    cout << "  Arbitro: " << arbi << endl;
+
+    Equipo* gan = p.getEquipoGanador();
+    Equipo* per = p.getEquipoPerdedor();
+    if (gan != nullptr) {
+        cout << "  Ganador: " << gan->getCodigoFIFA() << endl;
+        cout << "  Perdedor: " << per->getCodigoFIFA() << endl;
+    } else {
+        cout << "  (empate - solo posible en grupos)" << endl;
+    }
+
+    // Liberar memoria que creamos aca
+    delete arg;
+    delete fra;
 }
 
 // Prueba rapida de la clase Equipo:
@@ -143,6 +203,10 @@ void probarLista() {
 }
 
 int main() {
+    // Inicializamos la semilla aleatoria una sola vez al arrancar el programa
+    // (necesaria para rand() en la simulacion de Poisson y penales).
+    srand((unsigned int)time(nullptr));
+
     int opcion = -1;
 
     // Bucle principal del menu
@@ -165,6 +229,8 @@ int main() {
             cout << "Saliendo del sistema..." << endl;
         } else if (opcion == 7) {
             probarEquipo();
+        } else if (opcion == 11) {
+            probarPartido();
         } else if (opcion == 8) {
             probarJugador();
         } else if (opcion == 9) {
