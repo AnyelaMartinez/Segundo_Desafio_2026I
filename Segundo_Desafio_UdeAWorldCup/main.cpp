@@ -15,6 +15,7 @@
 #include "GestorCSV.h"
 #include "MedidorRecursos.h"
 #include "Fixture.h"
+#include "Competicion.h"
 #include <cstdlib>   // srand, rand
 #include <ctime>     // time
 using namespace std;
@@ -24,9 +25,17 @@ using namespace std;
 // Mas adelante esto vivira dentro de la clase Competicion.
 Lista<Equipo*> g_equipos;
 
+// Competicion global del Mundial.
+// La creamos vacia y la vamos llenando con cada opcion del menu.
+Competicion g_mundial("FIFA World Cup", 2026);
+
 // Helper para borrar todo lo que tengamos cargado (evita fugas de memoria
 // si el usuario carga el CSV varias veces).
+// IMPORTANTE: primero limpiamos g_mundial (que tiene partidos que referencian
+// a estos equipos como punteros prestados). Asi evitamos que los partidos
+// queden con punteros colgantes.
 void liberarEquiposGlobales() {
+    g_mundial.limpiar();
     for (int i = 0; i < g_equipos.getTamano(); i++) {
         if (g_equipos[i] != nullptr) {
             delete g_equipos[i];
@@ -247,6 +256,94 @@ void probarJugador() {
     cout << "Activo? " << (j1.estaActivo() ? "si" : "no") << endl;
 }
 
+// Opcion 2 del menu: pasa los equipos a la Competicion, llena bombos,
+// carga sedes y arbitros, y hace el sorteo (12 grupos).
+void conformarGrupos() {
+    if (g_equipos.getTamano() == 0) {
+        cout << "Primero carga el CSV (opcion 1)." << endl;
+        return;
+    }
+
+    MedidorRecursos medidor("Conformar grupos");
+    medidor.iniciar();
+
+    // Pasamos los equipos a la Competicion (son prestados, NO se duplican)
+    g_mundial.setEquipos(g_equipos);
+
+    // Sedes y arbitros (la primera vez nada mas)
+    if (g_mundial.sedes.getTamano() == 0) {
+        g_mundial.cargarSedes();
+    }
+    if (g_mundial.arbitros.getTamano() == 0) {
+        g_mundial.cargarArbitros();
+    }
+
+    // Bombos por ranking FIFA
+    g_mundial.cargarBombos();
+    g_mundial.mostrarBombos();
+
+    // Sorteo
+    bool ok = g_mundial.realizarSorteo();
+    if (!ok) {
+        cout << "El sorteo fallo. Revisar las confederaciones." << endl;
+        medidor.detener();
+        return;
+    }
+
+    g_mundial.mostrarGrupos();
+
+    medidor.detener();
+    medidor.mostrarReporte();
+}
+
+// Opcion 3: genera los 72 partidos de fase de grupos y los simula.
+void simularFaseGruposMenu() {
+    if (!g_mundial.getSorteoRealizado()) {
+        cout << "Primero arma los grupos (opcion 2)." << endl;
+        return;
+    }
+    MedidorRecursos medidor("Fase de Grupos");
+    medidor.iniciar();
+
+    g_mundial.generarPartidosFaseGrupos();
+    g_mundial.simularFaseGrupos();
+    g_mundial.mostrarResultadosFaseGrupos();
+
+    medidor.detener();
+    medidor.mostrarReporte();
+}
+
+// Opcion 4: arma las tablas, marca clasificados y muestra los 12 grupos.
+void construirTablasMenu() {
+    MedidorRecursos medidor("Tablas y clasificacion");
+    medidor.iniciar();
+
+    g_mundial.construirTablasYClasificar();
+    g_mundial.mostrarTablasGrupos();
+
+    medidor.detener();
+    medidor.mostrarReporte();
+}
+
+// Opcion 5: simula todas las eliminatorias (R16 -> R8 -> QF -> SF -> 3o + Final)
+void simularEliminatoriasMenu() {
+    MedidorRecursos medidor("Eliminatorias");
+    medidor.iniciar();
+
+    g_mundial.simularEliminatorias();
+    g_mundial.mostrarBracket();
+    g_mundial.mostrarPodio();
+
+    medidor.detener();
+    medidor.mostrarReporte();
+}
+
+// Opcion 6: muestra las estadisticas finales del torneo.
+void mostrarEstadisticasFinalesMenu() {
+    g_mundial.mostrarPodio();
+    g_mundial.mostrarEstadisticasFinales();
+}
+
 // Prueba rapida de Fixture: arma 6 partidos entre 4 equipos y verifica
 // que se respeten las reglas (max 4 partidos/dia y 3 dias de descanso).
 void probarFixture() {
@@ -336,6 +433,16 @@ int main() {
             liberarEquiposGlobales();
         } else if (opcion == 1) {
             cargarDesdeCSV();
+        } else if (opcion == 2) {
+            conformarGrupos();
+        } else if (opcion == 3) {
+            simularFaseGruposMenu();
+        } else if (opcion == 4) {
+            construirTablasMenu();
+        } else if (opcion == 5) {
+            simularEliminatoriasMenu();
+        } else if (opcion == 6) {
+            mostrarEstadisticasFinalesMenu();
         } else if (opcion == 7) {
             probarEquipo();
         } else if (opcion == 11) {

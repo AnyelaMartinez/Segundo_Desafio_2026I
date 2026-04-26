@@ -25,5 +25,6 @@ const int TOTAL_BOMBOS       = 4;
 const int EQUIPOS_POR_BOMBO  = 12;
 const int MAX_PARTIDOS_POR_DIA = 4;
 const int DIAS_DESCANSO      = 3;
+const int EQUIPOS_CLASIFICAN_POR_GRUPO = 2; // los 2 primeros pasan a R16
 
 #endif // TIPOS_H

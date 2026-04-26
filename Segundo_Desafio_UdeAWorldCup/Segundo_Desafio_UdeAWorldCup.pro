@@ -26,7 +26,8 @@ SOURCES += \
         Grupo.cpp \
         GestorCSV.cpp \
         MedidorRecursos.cpp \
-        Fixture.cpp
+        Fixture.cpp \
+        Competicion.cpp
 
 HEADERS += \
         tipos.h \
@@ -49,7 +50,8 @@ HEADERS += \
         Grupo.h \
         GestorCSV.h \
         MedidorRecursos.h \
-        Fixture.h
+        Fixture.h \
+        Competicion.h
 
 # En Windows necesitamos psapi para medir RAM (GetProcessMemoryInfo).
 # Si compilas en Linux/Mac esta linea no afecta porque MedidorRecursos
