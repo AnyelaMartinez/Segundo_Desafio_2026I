@@ -20,6 +20,17 @@ Bombo::Bombo(const Bombo& otro) {
     }
 }
 
+// operator= explicito (silencia warning -Wdeprecated-copy)
+Bombo& Bombo::operator=(const Bombo& otro) {
+    if (this == &otro) return *this;
+    numero = otro.numero;
+    equipos.limpiar();
+    for (int i = 0; i < otro.equipos.getTamano(); i++) {
+        equipos.agregar(otro.equipos[i]);
+    }
+    return *this;
+}
+
 Bombo::~Bombo() {
     // No borramos equipos: son referencias prestadas.
     // La Lista solo guarda Equipo*, asi que su destructor borra el arreglo

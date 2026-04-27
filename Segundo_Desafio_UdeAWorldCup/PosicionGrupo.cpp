@@ -21,6 +21,15 @@ PosicionGrupo::PosicionGrupo(const PosicionGrupo& otra) {
     clasificado = otra.clasificado;
 }
 
+// operator= explicito (silencia el warning -Wdeprecated-copy)
+PosicionGrupo& PosicionGrupo::operator=(const PosicionGrupo& otra) {
+    if (this == &otra) return *this;
+    equipo = otra.equipo;
+    posicion = otra.posicion;
+    clasificado = otra.clasificado;
+    return *this;
+}
+
 PosicionGrupo::~PosicionGrupo() {
     // Nada que liberar: 'equipo' es prestado.
     equipo = nullptr;

@@ -152,7 +152,7 @@ int Partido::muestrearPoisson(double lambda) const {
     do {
         k++;
         // numero aleatorio entre 0 y 1
-        double u = (double)rand() / (double)RAND_MAX;
+        double u = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
         p *= u;
     } while (p > L);
     return k - 1;
@@ -176,15 +176,15 @@ void Partido::repartirGoles(ParticipacionEquipo* lado, int golesEquipo) {
 void Partido::simularPenales() {
     int penL = 0, penV = 0;
     for (int i = 0; i < 5; i++) {
-        double u1 = (double)rand() / (double)RAND_MAX;
-        double u2 = (double)rand() / (double)RAND_MAX;
+        double u1 = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
+        double u2 = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
         if (u1 < 0.75) penL++;
         if (u2 < 0.75) penV++;
     }
     // Muerte subita: tirando de a uno hasta que se rompa el empate.
     while (penL == penV) {
-        double u1 = (double)rand() / (double)RAND_MAX;
-        double u2 = (double)rand() / (double)RAND_MAX;
+        double u1 = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
+        double u2 = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
         bool ml = (u1 < 0.75);
         bool mv = (u2 < 0.75);
         if (ml) penL++;

@@ -67,7 +67,7 @@ bool Fixture::equipoJuegaEseDia(Equipo* eq, int dia) const {
         if (p == nullptr) continue;
         if (p->getDia() != dia) continue;
         // Comparamos por puntero porque cada equipo es unico en memoria
-        if (p->getEquipoLocal() == eq || p->getEquipoVisitante() == eq) {
+        if (p->getLocal()->getEquipo() == eq || p->getVisitante()->getEquipo() == eq) {
             return true;
         }
     }
@@ -81,7 +81,7 @@ int Fixture::ultimoDiaDeEquipo(Equipo* eq) const {
     for (int i = 0; i < partidosAgendados.getTamano(); i++) {
         Partido* p = partidosAgendados[i];
         if (p == nullptr) continue;
-        if (p->getEquipoLocal() == eq || p->getEquipoVisitante() == eq) {
+        if (p->getLocal()->getEquipo() == eq || p->getVisitante()->getEquipo() == eq) {
             if (p->getDia() > ultimo) {
                 ultimo = p->getDia();
             }
@@ -100,8 +100,8 @@ bool Fixture::agendarPartido(Partido* p) {
 
 bool Fixture::agendarPartidoDesde(Partido* p, int diaMinimo) {
     if (p == nullptr) return false;
-    Equipo* local = p->getEquipoLocal();
-    Equipo* visitante = p->getEquipoVisitante();
+    Equipo* local = p->getLocal()->getEquipo();
+    Equipo* visitante = p->getVisitante()->getEquipo();
     if (local == nullptr || visitante == nullptr) return false;
 
     // El primer dia candidato debe ser:

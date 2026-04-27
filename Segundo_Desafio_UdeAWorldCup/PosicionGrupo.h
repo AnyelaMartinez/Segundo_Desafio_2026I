@@ -24,6 +24,7 @@ public:
     PosicionGrupo();
     PosicionGrupo(Equipo* e, int _posicion);
     PosicionGrupo(const PosicionGrupo& otra);
+    PosicionGrupo& operator=(const PosicionGrupo& otra);
 
     // No hay memoria dinamica propia, asi que destructor por defecto
     // serviria. Igual lo dejamos explicito por claridad.

@@ -37,6 +37,7 @@ public:
 
     EstadisticasPartido();
     EstadisticasPartido(const EstadisticasPartido& otro);
+    EstadisticasPartido& operator=(const EstadisticasPartido& otro);
 
     // Setters basicos
     void setGoles(int gl, int gv);

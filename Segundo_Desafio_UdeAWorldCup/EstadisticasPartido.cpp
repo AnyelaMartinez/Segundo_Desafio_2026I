@@ -31,6 +31,23 @@ EstadisticasPartido::EstadisticasPartido(const EstadisticasPartido& otro) {
     espectadores = otro.espectadores;
 }
 
+// operator= explicito (silencia warning -Wdeprecated-copy)
+EstadisticasPartido& EstadisticasPartido::operator=(const EstadisticasPartido& otro) {
+    if (this == &otro) return *this;
+    golesLocal = otro.golesLocal;
+    golesVisitante = otro.golesVisitante;
+    totalTarjetasAmarillas = otro.totalTarjetasAmarillas;
+    totalTarjetasRojas = otro.totalTarjetasRojas;
+    totalFaltas = otro.totalFaltas;
+    duracionMinutos = otro.duracionMinutos;
+    huboProrroga = otro.huboProrroga;
+    huboPenales = otro.huboPenales;
+    penalesLocal = otro.penalesLocal;
+    penalesVisitante = otro.penalesVisitante;
+    espectadores = otro.espectadores;
+    return *this;
+}
+
 void EstadisticasPartido::setGoles(int gl, int gv) {
     golesLocal = gl;
     golesVisitante = gv;

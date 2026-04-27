@@ -6,9 +6,20 @@
 
 // En Windows usamos psapi.h para consultar la RAM del proceso.
 // En Qt para que enlace bien necesitamos en el .pro:  LIBS += -lpsapi
+//
+// IMPORTANTE (workaround conocido MinGW + C++17):
+// Los headers de Windows (rpcndr.h, objidl.h, wtypes.h) definen un tipo
+// 'byte' en el espacio de nombres global que CHOCA con 'std::byte' de C++17.
+// Renombramos 'byte' a un nombre temporal antes de incluir los headers de
+// Windows para evitar el error "reference to 'byte' is ambiguous".
+// Esto NO afecta nuestro codigo porque nosotros nunca usamos 'byte'.
 #ifdef _WIN32
+    #define WIN32_LEAN_AND_MEAN
+    #define NOMINMAX
+    #define byte win_byte_workaround
     #include <windows.h>
     #include <psapi.h>
+    #undef byte
 #endif
 
 using namespace std;
@@ -68,7 +79,7 @@ long long MedidorRecursos::getTiempoMs() const {
 }
 
 double MedidorRecursos::getTiempoSegundos() const {
-    return (double)getTiempoMs() / 1000.0;
+    return static_cast<double>(getTiempoMs()) / 1000.0;
 }
 
 long long MedidorRecursos::getDeltaRAMBytes() const {
@@ -76,11 +87,11 @@ long long MedidorRecursos::getDeltaRAMBytes() const {
 }
 
 double MedidorRecursos::getDeltaRAMKB() const {
-    return (double)getDeltaRAMBytes() / 1024.0;
+    return static_cast<double>(getDeltaRAMBytes()) / 1024.0;
 }
 
 double MedidorRecursos::getDeltaRAMMB() const {
-    return (double)getDeltaRAMBytes() / (1024.0 * 1024.0);
+    return static_cast<double>(getDeltaRAMBytes()) / (1024.0 * 1024.0);
 }
 
 void MedidorRecursos::mostrarReporte() const {
@@ -91,9 +102,9 @@ void MedidorRecursos::mostrarReporte() const {
     cout << "Tiempo: " << getTiempoMs() << " ms ("
          << getTiempoSegundos() << " s)" << endl;
     cout << "RAM al iniciar: "
-         << ((double)ramAlIniciarBytes / (1024.0 * 1024.0)) << " MB" << endl;
+         << (static_cast<double>(ramAlIniciarBytes) / (1024.0 * 1024.0)) << " MB" << endl;
     cout << "RAM al detener: "
-         << ((double)ramAlDetenerBytes / (1024.0 * 1024.0)) << " MB" << endl;
+         << (static_cast<double>(ramAlDetenerBytes) / (1024.0 * 1024.0)) << " MB" << endl;
     cout << "Delta RAM:      " << getDeltaRAMKB() << " KB ("
          << getDeltaRAMMB() << " MB)" << endl;
     cout << "---------------------------------" << endl;
@@ -105,7 +116,7 @@ long long MedidorRecursos::getTiempoActualMs() {
     using namespace std::chrono;
     auto ahora = steady_clock::now();
     auto dur = duration_cast<milliseconds>(ahora.time_since_epoch());
-    return (long long)dur.count();
+    return static_cast<long long>(dur.count());
 }
 
 long long MedidorRecursos::getRAMActualBytes() {
@@ -114,7 +125,7 @@ long long MedidorRecursos::getRAMActualBytes() {
     HANDLE proceso = GetCurrentProcess();
     if (GetProcessMemoryInfo(proceso, &pmc, sizeof(pmc))) {
         // WorkingSetSize = memoria fisica que el proceso tiene en RAM
-        return (long long)pmc.WorkingSetSize;
+        return static_cast<long long>(pmc.WorkingSetSize);
     }
     return 0;
 #else

@@ -35,7 +35,7 @@ int GestorCSV::getLineasIgnoradas() const { return ultimasLineasIgnoradas; }
 // Quita espacios al inicio y al final.
 string GestorCSV::recortar(const string& s) const {
     int ini = 0;
-    int fin = (int)s.size() - 1;
+    int fin = static_cast<int>(s.size()) - 1;
     while (ini <= fin && (s[ini] == ' ' || s[ini] == '\t' || s[ini] == '\r')) ini++;
     while (fin >= ini && (s[fin] == ' ' || s[fin] == '\t' || s[fin] == '\r')) fin--;
     if (ini > fin) return "";
@@ -50,7 +50,7 @@ int GestorCSV::aEntero(const string& s) const {
     int i = 0;
     int signo = 1;
     if (t[0] == '-') { signo = -1; i = 1; }
-    for (; i < (int)t.size(); i++) {
+    for (; i < static_cast<int>(t.size()); i++) {
         if (t[i] < '0' || t[i] > '9') break;
         valor = valor * 10 + (t[i] - '0');
     }
@@ -62,7 +62,7 @@ int GestorCSV::dividirLinea(const string& linea, char separador,
                             string salida[], int maxCampos) const {
     int cnt = 0;
     string actual = "";
-    for (int i = 0; i < (int)linea.size(); i++) {
+    for (int i = 0; i < static_cast<int>(linea.size()); i++) {
         char c = linea[i];
         if (c == separador) {
             if (cnt < maxCampos) {
@@ -86,12 +86,12 @@ int GestorCSV::dividirLinea(const string& linea, char separador,
 // Ej: "France" -> "FRA", "Argentina" -> "ARG".
 string GestorCSV::generarCodigoFIFA(const string& pais) const {
     string r = "";
-    int n = (int)pais.size();
+    int n = static_cast<int>(pais.size());
     int i = 0;
     while (i < n && r.size() < 3) {
         char c = pais[i];
         if (c != ' ') {
-            r += (char)toupper((unsigned char)c);
+            r += static_cast<char>(toupper(static_cast<unsigned char>(c)));
         }
         i++;
     }
@@ -167,8 +167,8 @@ bool GestorCSV::cargarEquipos(Lista<Equipo*>& destino) {
         double gfaProm = 0.0;
         double gcbProm = 0.0;
         if (totalPartidos > 0) {
-            gfaProm = (double)golesFavor / (double)totalPartidos;
-            gcbProm = (double)golesContra / (double)totalPartidos;
+            gfaProm = static_cast<double>(golesFavor) / static_cast<double>(totalPartidos);
+            gcbProm = static_cast<double>(golesContra) / static_cast<double>(totalPartidos);
         }
 
         // Creamos el equipo

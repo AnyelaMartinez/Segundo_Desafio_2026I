@@ -72,7 +72,9 @@ public:
     void setEquipos(const Lista<Equipo*>& fuente); // copia los punteros (prestados)
     void cargarSedes();     // hardcodea 16 sedes del Mundial 2026
     void cargarArbitros();  // hardcodea ~12 arbitros
-    void cargarBombos();    // separa los 48 equipos en 4 bombos por ranking
+    // Separa los 48 equipos en 4 bombos por ranking. Si verbose es true imprime
+    // un resumen; con false (lo usamos al reintentar el sorteo) trabaja en silencio.
+    void cargarBombos(bool verbose = true);
 
     // Sorteo
     // Toma un equipo de cada bombo y lo asigna a cada grupo (A..L).

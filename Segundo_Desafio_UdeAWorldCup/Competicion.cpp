@@ -154,7 +154,7 @@ void Competicion::cargarArbitros() {
 //   Bombo 3: ranking 25..36
 //   Bombo 4: ranking 37..48
 // (Es la convencion que usamos para el desafio: separar por ranking.)
-void Competicion::cargarBombos() {
+void Competicion::cargarBombos(bool verbose) {
     // Limpiar bombos antes de llenar (por si llaman dos veces).
     // El campo 'equipos' del Bombo es publico y son punteros prestados,
     // asi que basta con limpiarlos sin borrar los Equipo.
@@ -162,32 +162,59 @@ void Competicion::cargarBombos() {
         bombos[i].equipos.limpiar();
     }
 
-    if (equipos.getTamano() != TOTAL_EQUIPOS) {
+    if (verbose && equipos.getTamano() != TOTAL_EQUIPOS) {
         cout << "Advertencia: se esperaban " << TOTAL_EQUIPOS
              << " equipos y hay " << equipos.getTamano() << "." << endl;
     }
 
+    // OJO: los rankings FIFA reales NO son consecutivos del 1 al 48
+    // (hay equipos con rk 14, 56, 70, etc.). Si reparto por rangos fijos
+    // (1-12, 13-24, ...) los bombos quedan desbalanceados y el sorteo falla.
+    // Solucion: ordenar los equipos por ranking ascendente y asignar por
+    // POSICION en la lista ordenada (los 12 mejores al bombo 1, etc.).
+    // Asi siempre quedan 12-12-12-12 sin importar los huecos del ranking.
+
+    // 1) Hacemos una copia de los punteros para ordenar sin afectar el original
+    Lista<Equipo*> ordenados;
     for (int i = 0; i < equipos.getTamano(); i++) {
-        Equipo* e = equipos[i];
-        if (e == nullptr) continue;
-        int rk = e->getRankingFIFA();
-        // Decidimos a que bombo va segun el ranking
-        if (rk >= 1 && rk <= 12) {
-            bombos[0].agregarEquipo(e);
-        } else if (rk >= 13 && rk <= 24) {
-            bombos[1].agregarEquipo(e);
-        } else if (rk >= 25 && rk <= 36) {
-            bombos[2].agregarEquipo(e);
-        } else {
-            // Resto van al bombo 4 (ranking 37..48 o cualquier otro)
-            bombos[3].agregarEquipo(e);
+        ordenados.agregar(equipos[i]);
+    }
+
+    // 2) Bubble sort por ranking ascendente (el mejor ranking = numero mas bajo)
+    int n = ordenados.getTamano();
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - 1 - i; j++) {
+            Equipo* a = ordenados[j];
+            Equipo* b = ordenados[j + 1];
+            if (a == nullptr || b == nullptr) continue;
+            if (a->getRanking() > b->getRanking()) {
+                // intercambiar
+                ordenados[j] = b;
+                ordenados[j + 1] = a;
+            }
         }
     }
 
-    cout << "Bombos cargados:" << endl;
-    for (int i = 0; i < 4; i++) {
-        cout << "  Bombo " << bombos[i].getNumero()
-             << " -> " << bombos[i].getCantidad() << " equipos" << endl;
+    // 3) Asignar por posicion en la lista ordenada
+    //    posiciones 0..11   -> bombo 1
+    //    posiciones 12..23  -> bombo 2
+    //    posiciones 24..35  -> bombo 3
+    //    posiciones 36..47  -> bombo 4
+    for (int i = 0; i < ordenados.getTamano(); i++) {
+        Equipo* e = ordenados[i];
+        if (e == nullptr) continue;
+        if (i < EQUIPOS_POR_BOMBO)            bombos[0].agregarEquipo(e);
+        else if (i < EQUIPOS_POR_BOMBO * 2)   bombos[1].agregarEquipo(e);
+        else if (i < EQUIPOS_POR_BOMBO * 3)   bombos[2].agregarEquipo(e);
+        else                                  bombos[3].agregarEquipo(e);
+    }
+
+    if (verbose) {
+        cout << "Bombos cargados:" << endl;
+        for (int i = 0; i < 4; i++) {
+            cout << "  Bombo " << bombos[i].getNumero()
+                 << " -> " << bombos[i].getCantidad() << " equipos" << endl;
+        }
     }
 }
 
@@ -200,14 +227,14 @@ bool Competicion::grupoAceptaEquipo(Grupo* g, Equipo* eq) const {
     if (g == nullptr || eq == nullptr) return false;
     if (g->getCantidadEquipos() >= EQUIPOS_POR_GRUPO) return false;
 
-    string sigla = eq->getConfederacion().sigla;
+    string sigla = eq->confederacion.sigla;
     // Cuantos equipos del grupo ya son de esa confederacion
     int cnt = 0;
     for (int i = 0; i < g->getCantidadEquipos(); i++) {
         // El campo 'equipos' del Grupo es publico (Lista<Equipo*>)
         Equipo* x = g->equipos[i];
         if (x == nullptr) continue;
-        if (x->getConfederacion().sigla == sigla) cnt++;
+        if (x->confederacion.sigla == sigla) cnt++;
     }
 
     // UEFA permite hasta 2 por grupo, las otras solo 1.
@@ -217,75 +244,122 @@ bool Competicion::grupoAceptaEquipo(Grupo* g, Equipo* eq) const {
     return cnt < 1;
 }
 
-// Toma un equipo aleatorio del bombo y lo intenta meter en algun grupo
-// que lo acepte. Si encuentra, lo agrega y devuelve true.
+// Saca un equipo del bombo y lo coloca en un grupo valido.
+//
+// Heuristica de "variable mas restringida" (CSP):
+// En vez de sacar un equipo al azar y rezar, busco entre TODOS los
+// equipos del bombo el que tenga MENOS grupos validos (el mas dificil
+// de colocar). Lo coloco PRIMERO en uno de esos grupos validos. Asi
+// evito quedarme sin opciones para los ultimos equipos.
+//
+// Sin esta heuristica, con 17 equipos UEFA repartidos en los 4 bombos
+// y solo 12 grupos disponibles, el sorteo fallaba siempre porque al final
+// quedaban equipos UEFA sin grupo donde caber.
 bool Competicion::asignarDesdeBombo(Bombo& b) {
-    // Vamos a intentar varias veces. Si despues de muchos intentos no
-    // se puede, devolvemos false (caso muy improbable con 12 grupos).
-    int intentosMaximos = b.getCantidad() * 10 + 50;
+    if (b.getCantidad() == 0) return false;
 
-    for (int intento = 0; intento < intentosMaximos; intento++) {
-        if (b.getCantidad() == 0) return false;
+    // 1) Encontrar el equipo MAS restringido (el que tenga menos grupos validos)
+    int idxMenos = -1;
+    int menosGrupos = 9999;
 
-        // Sacamos un equipo aleatorio del bombo
-        Equipo* eq = b.sacarEquipoAlAzar();
-        if (eq == nullptr) return false;
+    for (int i = 0; i < b.getCantidad(); i++) {
+        Equipo* eq = b.getEquipo(i);
+        if (eq == nullptr) continue;
 
-        // Buscamos un grupo donde quepa
+        // Cuento cuantos grupos lo aceptarian
+        int validos = 0;
         for (int g = 0; g < grupos.getTamano(); g++) {
-            Grupo* grp = grupos[g];
-            if (grupoAceptaEquipo(grp, eq)) {
-                grp->agregarEquipo(eq);
-                return true;
-            }
+            if (grupoAceptaEquipo(grupos[g], eq)) validos++;
         }
 
-        // No encontramos grupo: lo devolvemos al bombo y reintentamos.
-        // (raro, pero puede pasar al final del sorteo si los pocos
-        // grupos restantes ya tienen confederaciones repetidas).
-        b.agregarEquipo(eq);
+        // Me quedo con el equipo que tenga MENOS opciones validas
+        if (validos < menosGrupos) {
+            menosGrupos = validos;
+            idxMenos = i;
+        }
     }
 
-    cout << "Advertencia: no pude colocar equipo del " << b.getNombre() << endl;
-    return false;
+    // Si ningun equipo del bombo encaja, el sorteo fallo. El realizarSorteo()
+    // de afuera reintenta con otra aleatorizacion.
+    if (idxMenos == -1 || menosGrupos == 0) return false;
+
+    // 2) Saco ese equipo del bombo
+    Equipo* eq = b.getEquipo(idxMenos);
+    b.equipos.eliminar(idxMenos);
+    if (eq == nullptr) return false;
+
+    // 3) Recopilo TODOS los grupos validos y elijo uno al azar de ellos
+    //    (asi cada corrida da grupos diferentes, no es deterministico)
+    Lista<int> indicesValidos;
+    for (int g = 0; g < grupos.getTamano(); g++) {
+        if (grupoAceptaEquipo(grupos[g], eq)) indicesValidos.agregar(g);
+    }
+    if (indicesValidos.getTamano() == 0) {
+        // No deberia pasar (lo verificamos en el paso 1), pero por seguridad
+        b.agregarEquipo(eq);
+        return false;
+    }
+    int gElegido = indicesValidos[rand() % indicesValidos.getTamano()];
+    grupos[gElegido]->agregarEquipo(eq);
+    return true;
 }
 
 // Realiza el sorteo: crea 12 grupos vacios y rellena uno desde cada bombo.
+//
+// El sorteo puede fallar porque al final de un bombo a veces los unicos
+// equipos restantes son de una confederacion que ya esta llena en todos
+// los grupos posibles (caso comun con UEFA en el Bombo 4).
+// Solucion: reintentar el sorteo completo varias veces. Como hay aleatoriedad
+// en sacarEquipoAlAzar(), distintos intentos producen ordenes distintos
+// y eventualmente uno funciona. En la practica termina en 1 a 5 intentos.
 bool Competicion::realizarSorteo() {
     if (equipos.getTamano() < TOTAL_EQUIPOS) {
         cout << "No hay 48 equipos cargados." << endl;
         return false;
     }
-    // Si ya habia un sorteo previo, limpiamos los grupos
-    for (int i = 0; i < grupos.getTamano(); i++) {
-        if (grupos[i] != nullptr) delete grupos[i];
-    }
-    grupos.limpiar();
 
-    // Crear 12 grupos con letras 'A'..'L'
-    for (int i = 0; i < TOTAL_GRUPOS; i++) {
-        char letra = (char)('A' + i);
-        Grupo* g = new Grupo(letra);
-        grupos.agregar(g);
-    }
+    const int MAX_INTENTOS = 200;
+    for (int intento = 1; intento <= MAX_INTENTOS; intento++) {
+        // 1) Limpiar grupos previos
+        for (int i = 0; i < grupos.getTamano(); i++) {
+            if (grupos[i] != nullptr) delete grupos[i];
+        }
+        grupos.limpiar();
 
-    // Para cada bombo (1..4), asignar un equipo a cada grupo (A..L).
-    // Es decir: 12 extracciones por bombo.
-    for (int b = 0; b < 4; b++) {
-        for (int k = 0; k < TOTAL_GRUPOS; k++) {
-            bool ok = asignarDesdeBombo(bombos[b]);
-            if (!ok) {
-                cout << "Error en sorteo: bombo " << (b+1)
-                     << " no pudo asignar." << endl;
-                return false;
+        // 2) Crear 12 grupos vacios con letras 'A'..'L'
+        for (int i = 0; i < TOTAL_GRUPOS; i++) {
+            char letra = static_cast<char>('A' + i);
+            grupos.agregar(new Grupo(letra));
+        }
+
+        // 3) Recargar bombos en silencio (porque las extracciones de los
+        //    intentos anteriores los dejaron vacios o a medias)
+        cargarBombos(false);
+
+        // 4) Intentar el sorteo
+        bool exito = true;
+        for (int b = 0; b < 4 && exito; b++) {
+            for (int k = 0; k < TOTAL_GRUPOS; k++) {
+                if (!asignarDesdeBombo(bombos[b])) {
+                    exito = false;
+                    break;
+                }
             }
         }
+
+        if (exito) {
+            sorteoRealizado = true;
+            cout << "Sorteo realizado con exito en " << intento
+                 << " intento(s). " << TOTAL_GRUPOS
+                 << " grupos armados." << endl;
+            return true;
+        }
+        // Si fallo, el for de afuera vuelve a empezar limpiando todo.
     }
 
-    sorteoRealizado = true;
-    cout << "Sorteo realizado con exito. " << TOTAL_GRUPOS
-         << " grupos armados." << endl;
-    return true;
+    cout << "ERROR: el sorteo no pudo completarse despues de "
+         << MAX_INTENTOS << " intentos." << endl;
+    return false;
 }
 
 int Competicion::getCantidadEquipos() const { return equipos.getTamano(); }
@@ -315,7 +389,7 @@ void Competicion::mostrarBombos() const {
             if (e != nullptr) {
                 cout << "   " << e->getCodigoFIFA()
                      << " - " << e->getNombre()
-                     << " (rk " << e->getRankingFIFA() << ")"
+                     << " (rk " << e->getRanking() << ")"
                      << endl;
             }
         }
@@ -335,8 +409,8 @@ void Competicion::mostrarGrupos() const {
             if (e != nullptr) {
                 cout << "   " << e->getCodigoFIFA()
                      << " - " << e->getNombre()
-                     << "  [" << e->getConfederacion().sigla << "]"
-                     << "  (rk " << e->getRankingFIFA() << ")"
+                     << "  [" << e->confederacion.sigla << "]"
+                     << "  (rk " << e->getRanking() << ")"
                      << endl;
             }
         }

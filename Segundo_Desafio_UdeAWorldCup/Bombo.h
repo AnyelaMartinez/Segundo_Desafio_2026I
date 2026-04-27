@@ -29,6 +29,7 @@ public:
     Bombo();
     Bombo(int _numero);
     Bombo(const Bombo& otro);    // copia los punteros, no los equipos
+    Bombo& operator=(const Bombo& otro);
     ~Bombo();
 
     void setNumero(int n);

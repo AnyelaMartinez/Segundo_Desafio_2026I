@@ -18,6 +18,7 @@
 #include "Competicion.h"
 #include <cstdlib>   // srand, rand
 #include <ctime>     // time
+#include <fstream>   // para exportar a archivo .txt
 using namespace std;
 
 // Lista global de equipos del Mundial.
@@ -29,11 +30,15 @@ Lista<Equipo*> g_equipos;
 // La creamos vacia y la vamos llenando con cada opcion del menu.
 Competicion g_mundial("FIFA World Cup", 2026);
 
-// Helper para borrar todo lo que tengamos cargado (evita fugas de memoria
-// si el usuario carga el CSV varias veces).
-// IMPORTANTE: primero limpiamos g_mundial (que tiene partidos que referencian
-// a estos equipos como punteros prestados). Asi evitamos que los partidos
-// queden con punteros colgantes.
+// Forward declarations: las funciones de prueba estan definidas mas abajo
+// pero las necesitamos referenciar antes (en manejarSubmenuPruebas).
+void probarPartido();
+void probarEquipo();
+void probarJugador();
+void probarLista();
+void probarFixture();
+
+
 void liberarEquiposGlobales() {
     g_mundial.limpiar();
     for (int i = 0; i < g_equipos.getTamano(); i++) {
@@ -44,25 +49,39 @@ void liberarEquiposGlobales() {
     g_equipos.limpiar();
 }
 
-// Funcion que muestra el menu al usuario
-// Por ahora solo imprime las opciones, mas adelante iremos llamando a las funcionalidades.
+// Funcion que muestra el menu principal al usuario.
+// El flujo del torneo es: 1 -> 2 -> 3 -> 4 -> 5 -> 6, o de un solo
+// click con la opcion 7. La opcion 8 guarda los resultados a un archivo .txt.
 void mostrarMenu() {
     cout << "========================================" << endl;
     cout << "       UdeAWorldCup - Mundial 2026      " << endl;
     cout << "========================================" << endl;
     cout << "1. Cargar/Actualizar datos desde CSV" << endl;
-    cout << "2. Conformar grupos del mundial" << endl;
+    cout << "2. Conformar grupos del mundial (sorteo)" << endl;
     cout << "3. Simular fase de grupos" << endl;
-    cout << "4. Construir tablas y pasar a R16" << endl;
+    cout << "4. Construir tablas y marcar clasificados" << endl;
     cout << "5. Simular etapas eliminatorias" << endl;
     cout << "6. Mostrar estadisticas finales" << endl;
-    cout << "7. [PRUEBA] Probar clase Equipo" << endl;
-    cout << "11. [PRUEBA] Probar clase Partido (Poisson)" << endl;
-    cout << "8. [PRUEBA] Probar clase Jugador" << endl;
-    cout << "9. [PRUEBA] Probar plantilla Lista<T>" << endl;
-    cout << "12. [PRUEBA] Probar clase Fixture (calendario)" << endl;
+    cout << "7. EJECUTAR TODO (1 -> 6 automatico)" << endl;
+    cout << "8. Exportar resultados a archivo .txt" << endl;
+    cout << "9. Sub-menu de pruebas (clases sueltas)" << endl;
     cout << "0. Salir" << endl;
     cout << "----------------------------------------" << endl;
+    cout << "Opcion: ";
+}
+
+// Sub-menu con las pruebas individuales de cada clase.
+// Lo dejamos por si hay que revisar el funcionamiento de algun componente
+// suelto, pero ya no estorba en el menu principal.
+void mostrarSubmenuPruebas() {
+    cout << "----- Pruebas (clases sueltas) -----" << endl;
+    cout << "1. Probar clase Equipo" << endl;
+    cout << "2. Probar clase Partido (Poisson)" << endl;
+    cout << "3. Probar clase Jugador" << endl;
+    cout << "4. Probar plantilla Lista<T>" << endl;
+    cout << "5. Probar clase Fixture (calendario)" << endl;
+    cout << "0. Volver" << endl;
+    cout << "------------------------------------" << endl;
     cout << "Opcion: ";
 }
 
@@ -344,6 +363,122 @@ void mostrarEstadisticasFinalesMenu() {
     g_mundial.mostrarEstadisticasFinales();
 }
 
+// Opcion 7: ejecuta TODO el flujo en cascada y reporta tiempo + RAM total.
+// Equivale a hacer 1 -> 2 -> 3 -> 4 -> 5 -> 6 manualmente.
+void ejecutarTodoMenu() {
+    cout << "*** EJECUTANDO TODO EL TORNEO ***" << endl;
+    MedidorRecursos medidor("Mundial completo");
+    medidor.iniciar();
+
+    cargarDesdeCSV();
+    conformarGrupos();
+    simularFaseGruposMenu();
+    construirTablasMenu();
+    simularEliminatoriasMenu();
+    mostrarEstadisticasFinalesMenu();
+
+    medidor.detener();
+    cout << "------ Reporte FINAL del torneo completo ------" << endl;
+    medidor.mostrarReporte();
+}
+
+// Opcion 8: vuelca los resultados del torneo a un archivo de texto.
+// Util para entregar los resultados sin tener que recorrer la consola.
+void exportarResultadosMenu() {
+    if (!g_mundial.eliminatoriasSimuladas) {
+        cout << "Aun no se ha simulado el torneo completo." << endl;
+        return;
+    }
+    string ruta = "../resultados_mundial.txt";
+    ofstream archivo(ruta.c_str());
+    if (!archivo.is_open()) {
+        cout << "No se pudo abrir el archivo de salida." << endl;
+        return;
+    }
+
+    archivo << "==========================================" << endl;
+    archivo << "  RESULTADOS UdeAWorldCup - Mundial 2026  " << endl;
+    archivo << "==========================================" << endl << endl;
+
+    // Tablas finales de cada grupo
+    archivo << "----- TABLAS POR GRUPO -----" << endl;
+    for (int i = 0; i < g_mundial.grupos.getTamano(); i++) {
+        Grupo* g = g_mundial.grupos[i];
+        if (g == nullptr) continue;
+        archivo << "Grupo " << g->getLetra() << ":" << endl;
+        for (int p = 1; p <= g->getCantidadEquipos(); p++) {
+            Equipo* eq = g->getEquipoEnPosicion(p);
+            if (eq == nullptr) continue;
+            archivo << "  " << p << ". "
+                    << eq->getCodigoFIFA() << " - "
+                    << eq->getNombre()
+                    << " | Pts=" << eq->getEstadisticas().getPuntos()
+                    << " GF=" << eq->getEstadisticas().getGF()
+                    << " GC=" << eq->getEstadisticas().getGC()
+                    << endl;
+        }
+    }
+
+    // Bracket
+    archivo << endl << "----- ELIMINATORIAS -----" << endl;
+    Etapa etapas[] = {R16, R8, QF, SF, TERCER_PUESTO, FINAL_COPA};
+    string nombres[] = {"R16", "Octavos", "Cuartos", "Semifinales",
+                        "Tercer Puesto", "FINAL"};
+    for (int e = 0; e < 6; e++) {
+        archivo << nombres[e] << ":" << endl;
+        for (int i = 0; i < g_mundial.partidos.getTamano(); i++) {
+            Partido* pp = g_mundial.partidos[i];
+            if (pp == nullptr) continue;
+            if (pp->getEtapa() != etapas[e]) continue;
+            archivo << "  dia " << pp->getDia() << " | " << *pp << endl;
+        }
+    }
+
+    // Podio
+    archivo << endl << "----- PODIO FINAL -----" << endl;
+    if (g_mundial.campeon != nullptr) {
+        archivo << "Campeon:    " << g_mundial.campeon->getCodigoFIFA()
+                << " - " << g_mundial.campeon->getNombre() << endl;
+    }
+    if (g_mundial.subcampeon != nullptr) {
+        archivo << "Sub-campeon: " << g_mundial.subcampeon->getCodigoFIFA()
+                << " - " << g_mundial.subcampeon->getNombre() << endl;
+    }
+    if (g_mundial.tercero != nullptr) {
+        archivo << "Tercero:    " << g_mundial.tercero->getCodigoFIFA()
+                << " - " << g_mundial.tercero->getNombre() << endl;
+    }
+    if (g_mundial.cuarto != nullptr) {
+        archivo << "Cuarto:     " << g_mundial.cuarto->getCodigoFIFA()
+                << " - " << g_mundial.cuarto->getNombre() << endl;
+    }
+
+    archivo.close();
+    cout << "Resultados exportados a: " << ruta << endl;
+}
+
+// Maneja el sub-menu de pruebas de clases sueltas.
+void manejarSubmenuPruebas() {
+    int op = -1;
+    while (op != 0) {
+        mostrarSubmenuPruebas();
+        cin >> op;
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Entrada invalida." << endl;
+            continue;
+        }
+        if (op == 1) probarEquipo();
+        else if (op == 2) probarPartido();
+        else if (op == 3) probarJugador();
+        else if (op == 4) probarLista();
+        else if (op == 5) probarFixture();
+        else if (op != 0) cout << "Opcion no valida." << endl;
+        cout << endl;
+    }
+}
+
 // Prueba rapida de Fixture: arma 6 partidos entre 4 equipos y verifica
 // que se respeten las reglas (max 4 partidos/dia y 3 dias de descanso).
 void probarFixture() {
@@ -407,7 +542,7 @@ void probarLista() {
 int main() {
     // Inicializamos la semilla aleatoria una sola vez al arrancar el programa
     // (necesaria para rand() en la simulacion de Poisson y penales).
-    srand((unsigned int)time(nullptr));
+    srand(static_cast<unsigned int>(time(nullptr)));
 
     int opcion = -1;
 
@@ -444,18 +579,13 @@ int main() {
         } else if (opcion == 6) {
             mostrarEstadisticasFinalesMenu();
         } else if (opcion == 7) {
-            probarEquipo();
-        } else if (opcion == 11) {
-            probarPartido();
+            ejecutarTodoMenu();
         } else if (opcion == 8) {
-            probarJugador();
+            exportarResultadosMenu();
         } else if (opcion == 9) {
-            probarLista();
-        } else if (opcion == 12) {
-            probarFixture();
+            manejarSubmenuPruebas();
         } else {
-            // Por ahora solo avisamos que la opcion no esta implementada.
-            cout << "[Opcion " << opcion << "] pendiente de implementar." << endl;
+            cout << "Opcion no valida." << endl;
         }
         cout << endl;
     }
