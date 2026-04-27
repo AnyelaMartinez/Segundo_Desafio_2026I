@@ -1,6 +1,6 @@
 // main.cpp
 // Proyecto: UdeAWorldCup - Desafio II Informatica II 2026-1
-// Autor: Anyela Martinez
+// Autor: Anyela Martinez y Ana Isabel Diaz Martinez
 // Descripcion: Punto de entrada del programa, muestra el menu principal.
 
 #include <iostream>
